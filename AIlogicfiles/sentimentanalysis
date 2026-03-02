@@ -1,0 +1,91 @@
+"""
+Simple rule-based sentiment analysis for posts and comments.
+"""
+
+POSITIVE_KEYWORDS = {
+    'love',
+    'great',
+    'awesome',
+    'amazing',
+    'wonderful',
+    'fantastic',
+    'excellent',
+    'beautiful',
+    'good',
+    'perfect',
+    'happy',
+    'glad',
+    'brilliant',
+    'superb',
+    'outstanding',
+    'lovely',
+    'brilliant',
+}
+
+NEGATIVE_KEYWORDS = {
+    'hate',
+    'bad',
+    'awful',
+    'terrible',
+    'horrible',
+    'disgusting',
+    'ugly',
+    'worst',
+    'poor',
+    'sad',
+    'angry',
+    'annoyed',
+    'disappointed',
+    'frustrating',
+    'useless',
+    'pathetic',
+}
+
+def analyze_sentiment(text: str) -> dict:
+    """
+    Analyze sentiment of text.
+    
+    Args:
+        text: Text to analyze
+        
+    Returns:
+        dict with positive_score, negative_score, neutral_score
+    """
+    text_lower = text.lower().strip()
+    words = text_lower.split()
+    
+    positive_count = 0
+    negative_count = 0
+    
+    for word in words:
+        clean_word = word.strip('.,!?;:"\'')
+        if clean_word in POSITIVE_KEYWORDS:
+            positive_count += 1
+        elif clean_word in NEGATIVE_KEYWORDS:
+            negative_count += 1
+    
+    total = max(positive_count + negative_count, 1)
+    
+    return {
+        "positive_score": positive_count / total,
+        "negative_score": negative_count / total,
+        "neutral_score": 1 - (positive_count + negative_count) / total if total > 0 else 1.0,
+        "positive_count": positive_count,
+        "negative_count": negative_count,
+    }
+
+def get_sentiment_label(sentiment_dict: dict) -> str:
+    """
+    Get sentiment label based on scores.
+    
+    Args:
+        sentiment_dict: Sentiment analysis result
+        
+    Returns:
+        "positive", "negative", or "neutral"
+    """
+    if sentiment_dict["positive_score"] > 0.5:
+        return "positive"
+    elif sentiment_dict["negative_score"] > 0.5:
+        return "negative"
+    return "neutral"

@@ -1,0 +1,24 @@
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+class MessageCreate(BaseModel):
+    recipient_id: int
+    text: str
+
+class MessageResponse(BaseModel):
+    id: int
+    sender_id: int
+    recipient_id: int
+    text: str
+    risk_level: str  # "low", "medium", "high"
+    warning: Optional[str]
+    created_at: datetime
+
+class ConversationResponse(BaseModel):
+    messages: list[MessageResponse]
+    other_user_id: int
+    unread_count: int
+
+class MessageInDB(MessageResponse):
+    pass

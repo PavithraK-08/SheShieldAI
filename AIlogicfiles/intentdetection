@@ -1,0 +1,102 @@
+"""
+Simple rule-based risk detection for direct messages.
+"""
+
+HIGH_RISK_KEYWORDS = {
+    'scam',
+    'fake',
+    'money',
+    'bitcoin',
+    'crypto',
+    'investment',
+    'urgent',
+    'verify account',
+    'confirm password',
+    'credit card',
+    'ssn',
+    'social security',
+    'bank account',
+    'wire transfer',
+}
+
+MEDIUM_RISK_KEYWORDS = {
+    'click here',
+    'verify',
+    'confirm',
+    'update',
+    'suspicious',
+    'strange',
+    'unusual',
+}
+
+def detect_risk_level(text: str) -> dict:
+    """
+    Detect risk level of message.
+    
+    Args:
+        text: Message text to analyze
+        
+    Returns:
+        dict with risk_level, warning, confidence
+    """
+    text_lower = text.lower().strip()
+    words = text_lower.split()
+    
+    high_risk_count = 0
+    medium_risk_count = 0
+    
+    for word in words:
+        clean_word = word.strip('.,!?;:"\'')
+        if clean_word in HIGH_RISK_KEYWORDS:
+            high_risk_count += 1
+        elif clean_word in MEDIUM_RISK_KEYWORDS:
+            medium_risk_count += 1
+    
+    # Determine risk level
+    if high_risk_count >= 2:
+        return {
+            "risk_level": "high",
+            "warning": "⚠️ This message contains suspicious content. Be cautious about sharing personal information.",
+            "confidence": 0.95,
+        }
+    elif high_risk_count >= 1 or medium_risk_count >= 3:
+        return {
+            "risk_level": "medium",
+            "warning": "⚠️ This message may contain suspicious content. Verify before responding.",
+            "confidence": 0.75,
+        }
+    else:
+        return {
+            "risk_level": "low",
+            "warning": None,
+            "confidence": 0.95,
+        }
+
+def is_suspicious_pattern(text: str) -> bool:
+    """
+    Check for suspicious message patterns.
+    
+    Args:
+        text: Message text
+        
+    Returns:
+        True if suspicious pattern detected
+    """
+    text_lower = text.lower().strip()
+    
+    # Check for URL shorteners
+    suspicious_urls = ['bit.ly', 'tinyurl', 'short.link', 'goo.gl']
+    for url in suspicious_urls:
+        if url in text_lower:
+            return True
+    
+    # Check for excessive caps (potential spam)
+    caps_count = sum(1 for c in text if c.isupper())
+    if caps_count > len(text) * 0.5:
+        return True
+    
+    # Check for repeated characters
+    if any(char * 5 in text_lower for char in 'abcdefghijklmnopqrstuvwxyz'):
+        return True
+    
+    return False

@@ -1,0 +1,82 @@
+from fastapi import APIRouter, HTTPException
+from models.post import PostCreate, PostResponse, PostInDB
+from datetime import datetime
+
+router = APIRouter(prefix="/posts", tags=["posts"])
+
+# In-memory storage
+posts_db: dict[int, PostInDB] = {}
+post_id_counter = 1
+
+@router.post("/create", response_model=PostResponse)
+async def create_post(user_id: int, post: PostCreate):
+    """Create a new post"""
+    global post_id_counter
+    
+    new_post = PostInDB(
+        id=post_id_counter,
+        user_id=user_id,
+        caption=post.caption,
+        image_url=post.image_url,
+        likes_count=0,
+        comments_count=0,
+        created_at=datetime.now(),
+        liked_by_users=[],
+        liked_by=[],
+        comments=[],
+    )
+    
+    posts_db[post_id_counter] = new_post
+    post_id_counter += 1
+    
+    return PostResponse(**new_post.model_dump(exclude={"liked_by", "comments"}))
+
+@router.get("/feed/{user_id}")
+async def get_feed(user_id: int):
+    """Get feed for user (posts from following + own posts)"""
+    if user_id not in posts_db and user_id > 0:
+        # User exists check would be in real app
+        pass
+    
+    # Return all posts (simplified feed)
+    posts = list(posts_db.values())
+    posts.sort(key=lambda x: x.created_at, reverse=True)
+    
+    return [PostResponse(**post.model_dump(exclude={"liked_by", "comments"})) for post in posts]
+
+@router.post("/like/{post_id}")
+async def like_post(user_id: int, post_id: int):
+    """Like a post"""
+    if post_id not in posts_db:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post = posts_db[post_id]
+    
+    if user_id not in post.liked_by:
+        post.liked_by.append(user_id)
+        post.likes_count += 1
+    
+    return {"status": "liked", "likes_count": post.likes_count}
+
+@router.post("/unlike/{post_id}")
+async def unlike_post(user_id: int, post_id: int):
+    """Unlike a post"""
+    if post_id not in posts_db:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post = posts_db[post_id]
+    
+    if user_id in post.liked_by:
+        post.liked_by.remove(user_id)
+        post.likes_count -= 1
+    
+    return {"status": "unliked", "likes_count": post.likes_count}
+
+@router.get("/post/{post_id}", response_model=PostResponse)
+async def get_post(post_id: int):
+    """Get single post"""
+    if post_id not in posts_db:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post = posts_db[post_id]
+    return PostResponse(**post.model_dump(exclude={"liked_by", "comments"}))

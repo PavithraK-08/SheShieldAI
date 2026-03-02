@@ -1,0 +1,82 @@
+from fastapi import APIRouter, HTTPException
+from models.comment import CommentCreate, CommentResponse, CommentInDB
+from ai.toxicity import is_toxic
+from datetime import datetime
+
+router = APIRouter(prefix="/comments", tags=["comments"])
+
+# In-memory storage
+comments_db: dict[int, CommentInDB] = {}
+comment_id_counter = 1
+
+# Import posts_db to update comment count
+from routes.posts import posts_db
+
+@router.post("/add/{post_id}")
+async def add_comment(user_id: int, post_id: int, comment: CommentCreate):
+    """
+    Add comment to post with toxicity filter.
+    
+    AI Safety Layer 1: Comment Filter
+    - Checks if comment is toxic before saving
+    - If toxic, blocks comment with {status: "blocked"}
+    - If safe, saves and returns {status: "posted"}
+    """
+    global comment_id_counter
+    
+    if post_id not in posts_db:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # AI SAFETY CHECK: Toxicity Filter
+    if is_toxic(comment.text):
+        return {
+            "status": "blocked",
+            "message": "Comment blocked due to inappropriate content.",
+            "reason": "toxicity_detected",
+        }
+    
+    # Comment is safe, save it
+    new_comment = CommentInDB(
+        id=comment_id_counter,
+        post_id=post_id,
+        user_id=user_id,
+        text=comment.text,
+        status="posted",
+        created_at=datetime.now(),
+    )
+    
+    comments_db[comment_id_counter] = new_comment
+    comment_id_counter += 1
+    
+    # Update post comment count
+    post = posts_db[post_id]
+    post.comments.append(comment_id_counter - 1)
+    post.comments_count += 1
+    
+    return {
+        "status": "posted",
+        "comment_id": new_comment.id,
+        "comment": CommentResponse(**new_comment.model_dump()),
+    }
+
+@router.get("/post/{post_id}")
+async def get_post_comments(post_id: int):
+    """Get all comments for a post"""
+    if post_id not in posts_db:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post_comments = [
+        CommentResponse(**comments_db[cid].model_dump())
+        for cid in posts_db[post_id].comments
+        if cid in comments_db
+    ]
+    
+    return {"comments": post_comments, "count": len(post_comments)}
+
+@router.get("/comment/{comment_id}", response_model=CommentResponse)
+async def get_comment(comment_id: int):
+    """Get single comment"""
+    if comment_id not in comments_db:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    return CommentResponse(**comments_db[comment_id].model_dump())

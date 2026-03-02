@@ -1,0 +1,72 @@
+"""
+Simple rule-based toxicity detection for comments.
+"""
+
+TOXIC_KEYWORDS = {
+    'hate',
+    'stupid',
+    'idiot',
+    'dumb',
+    'awful',
+    'terrible',
+    'disgusting',
+    'ugly',
+    'loser',
+    'kill',
+    'die',
+    'slut',
+    'trash',
+    'worthless',
+    'pathetic',
+    'asshole',
+    'bastard',
+}
+
+AGGRESSIVE_PATTERNS = [
+    'kill yourself',
+    'go kill yourself',
+    'you should die',
+    'i hate you',
+    'you suck',
+]
+
+def is_toxic(text: str) -> bool:
+    """
+    Check if comment text contains toxic content.
+    
+    Args:
+        text: Comment text to analyze
+        
+    Returns:
+        True if toxic, False if safe
+    """
+    text_lower = text.lower().strip()
+    
+    # Check for aggressive patterns
+    for pattern in AGGRESSIVE_PATTERNS:
+        if pattern in text_lower:
+            return True
+    
+    # Check for toxic keywords (require word boundaries)
+    words = text_lower.split()
+    for word in words:
+        # Remove punctuation
+        clean_word = word.strip('.,!?;:"\'')
+        if clean_word in TOXIC_KEYWORDS:
+            return True
+    
+    return False
+
+def get_toxicity_score(text: str) -> float:
+    """
+    Get toxicity score from 0.0 to 1.0
+    
+    Args:
+        text: Comment text to analyze
+        
+    Returns:
+        Float between 0.0 (safe) and 1.0 (very toxic)
+    """
+    if is_toxic(text):
+        return 0.85
+    return 0.1

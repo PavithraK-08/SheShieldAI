@@ -1,0 +1,55 @@
+from fastapi import APIRouter, HTTPException
+from ai.sentiment import analyze_sentiment
+from routes.posts import posts_db
+from routes.comments import comments_db
+
+router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+@router.get("/post/{post_id}/sentiment")
+async def get_post_sentiment(post_id: int):
+    """
+    Analyze sentiment of all comments on a post.
+    
+    AI Safety Layer 3: Post Sentiment Dashboard
+    - Returns positive and negative counts
+    - Identifies toxicity alerts
+    """
+    if post_id not in posts_db:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post = posts_db[post_id]
+    
+    total_positive = 0
+    total_negative = 0
+    total_neutral = 0
+    toxicity_alerts = []
+    
+    for comment_id in post.comments:
+        if comment_id in comments_db:
+            comment = comments_db[comment_id]
+            sentiment = analyze_sentiment(comment.text)
+            
+            total_positive += sentiment["positive_count"]
+            total_negative += sentiment["negative_count"]
+            
+            if sentiment["negative_count"] > 0:
+                toxicity_alerts.append({
+                    "comment_id": comment_id,
+                    "user_id": comment.user_id,
+                    "text": comment.text,
+                    "negative_score": sentiment["negative_score"],
+                })
+    
+    total_comments = len(post.comments)
+    
+    return {
+        "post_id": post_id,
+        "total_comments": total_comments,
+        "positive_count": total_positive,
+        "negative_count": total_negative,
+        "neutral_count": total_neutral,
+        "positive_percentage": (total_positive / max(total_comments, 1)) * 100,
+        "negative_percentage": (total_negative / max(total_comments, 1)) * 100,
+        "toxicity_alerts": toxicity_alerts,
+        "sentiment_status": "safe" if len(toxicity_alerts) == 0 else "review_needed",
+    }

@@ -1,0 +1,21 @@
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+class PostCreate(BaseModel):
+    caption: str
+    image_url: str
+
+class PostResponse(BaseModel):
+    id: int
+    user_id: int
+    caption: str
+    image_url: str
+    likes_count: int
+    comments_count: int
+    created_at: datetime
+    liked_by_users: list[int] = []
+
+class PostInDB(PostResponse):
+    comments: list[int] = []
+    liked_by: list[int] = []
